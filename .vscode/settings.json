@@ -1,0 +1,15 @@
+{
+  "files.exclude": {
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
+    "*.code-workspace": true,
+    "**/.vscode": true,
+    "challenge.html": true,
+    "indexx.html": true,
+    "mycode.html": true
+  },
+  "hide-files.files": []
+}
