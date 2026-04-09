@@ -31,6 +31,14 @@
 $ npm install
 ```
 
+## Environment variables
+
+Create a local `.env` file from `.env.example` and adjust values as needed.
+
+- `APP_NAME`: application display name used in startup logs
+- `NODE_ENV`: `development`, `test`, or `production`
+- `PORT`: HTTP port for the Nest server
+
 ## Compile and run the project
 
 ```bash
