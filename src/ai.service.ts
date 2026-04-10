@@ -28,7 +28,10 @@ export class AIService {
    constructor(private readonly configService: ConfigService) {
       const appConfig = this.configService.getOrThrow<AppConfig>('app');
 
-      this.ai = new GoogleGenAI({ apiKey: appConfig.GEMINI_API_KEY });
+      this.ai = new GoogleGenAI({
+         apiKey: appConfig.GEMINI_API_KEY, httpOptions: {
+         // apiVersion: 'v1',
+      }});
    }
 
    async listModels(pageSize?: number, pageToken?: string) {
@@ -95,18 +98,20 @@ export class AIService {
          if (!contents.length) {
             throw new UnprocessableEntityException('No content provided');
          }
+
+
          const response = await this.ai.models.generateContentStream({
             model: modelName,
             contents,
             config: {
                temperature: config?.temperature,
                maxOutputTokens: config?.maxOutputTokens,
-               systemInstruction: {
-                  text:
-                     config?.personality +
-                     '\n\n' +
-                     (config?.guardRails ? config.guardRails.join('\n') : ''),
-               },
+               // systemInstruction: {
+               //    text:
+               //       config?.personality +
+               //       '\n\n' +
+               //       (config?.guardRails ? config.guardRails.join('\n') : ''),
+               // },
                safetySettings: [
                   {
                      category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
