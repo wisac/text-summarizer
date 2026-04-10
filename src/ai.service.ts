@@ -2,7 +2,7 @@ import {
    ContentListUnion,
    GoogleGenAI,
    HarmBlockThreshold,
-   HarmCategory
+   HarmCategory,
 } from '@google/genai';
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -130,7 +130,9 @@ export class AIService {
             `Error generating content with model ${modelName}:`,
             error,
          );
-         throw new UnprocessableEntityException('Failed to generate content');
+         throw new UnprocessableEntityException(
+            this.extractErrorMessage(error, 'Failed to generate content'),
+         );
       }
    }
 
@@ -152,8 +154,68 @@ export class AIService {
             error,
          );
          throw new UnprocessableEntityException(
-            'Failed to generate embeddings',
+            this.extractErrorMessage(error, 'Failed to generate embeddings'),
          );
+      }
+   }
+
+   private extractErrorMessage(error: unknown, fallback: string): string {
+      const objectError =
+         typeof error === 'object' && error !== null
+            ? (error as Record<string, unknown>)
+            : null;
+
+      const directMessage =
+         typeof objectError?.message === 'string'
+            ? objectError.message
+            : typeof error === 'string'
+              ? error
+              : '';
+
+      if (!directMessage) {
+         return fallback;
+      }
+
+      const nested = this.extractMessageFromJsonChain(directMessage);
+      return nested || directMessage || fallback;
+   }
+
+   private extractMessageFromJsonChain(rawMessage: string): string {
+      let current: string | Record<string, unknown> = rawMessage.trim();
+
+      for (let i = 0; i < 4; i += 1) {
+         if (typeof current === 'string') {
+            const parsed = this.tryParseJsonObject(current);
+            if (!parsed) {
+               return current;
+            }
+            current = parsed;
+         }
+
+         const candidate =
+            current.error && typeof current.error === 'object'
+               ? (current.error as Record<string, unknown>).message
+               : current.message;
+
+         if (typeof candidate !== 'string') {
+            return rawMessage.trim();
+         }
+
+         current = candidate.trim();
+      }
+
+      return typeof current === 'string' ? current : rawMessage.trim();
+   }
+
+   private tryParseJsonObject(value: string): Record<string, unknown> | null {
+      try {
+         const parsed = JSON.parse(value);
+         if (typeof parsed === 'object' && parsed !== null) {
+            return parsed as Record<string, unknown>;
+         }
+         return null;
+      } catch {
+         return null;
       }
    }
 }

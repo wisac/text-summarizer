@@ -13,11 +13,19 @@ import {
 } from '@nestjs/common';
 
 import { FilesInterceptor } from '@nestjs/platform-express';
-import express from 'express';
+import type { Response } from 'express';
 import { AIService } from './ai.service';
 import { AppService } from './app.service';
 import { GenerateDto } from './dto/generate.dto';
 import { SummarizeDto } from './dto/summarize.dto';
+import { UpdateModelDto } from './dto/update-model.dto';
+import { ModelConfigService } from './model-config.service';
+
+type UploadedFile = {
+   buffer: Buffer;
+   mimetype: string;
+   originalname: string;
+};
 
 const TEN_MB = 10 * 1024 * 1024;
 const ACCEPTED_DOCUMENT_MIME_TYPES = new Set([
@@ -34,7 +42,26 @@ export class AppController {
    constructor(
       private readonly appService: AppService,
       private readonly aiService: AIService,
+      private readonly modelConfigService: ModelConfigService,
    ) {}
+
+   @Get('/model')
+   async getActiveModel() {
+      const modelName = await this.modelConfigService.getActiveModelName();
+      return { modelName };
+   }
+
+   @Post('/model')
+   async updateActiveModel(@Body() payload: UpdateModelDto) {
+      const modelName = await this.modelConfigService.updateActiveModelName(
+         payload.modelName,
+      );
+
+      return {
+         message: 'Active model updated successfully',
+         modelName,
+      };
+   }
 
    @Get('/models')
    listModels(
@@ -50,7 +77,7 @@ export class AppController {
    }
 
    @Post('/generate')
-      @HttpCode(200)
+   @HttpCode(200)
    @UseInterceptors(
       FilesInterceptor('files', 5, {
          limits: {
@@ -72,12 +99,14 @@ export class AppController {
    )
    async generateContent(
       @Body() payload: GenerateDto,
-      @UploadedFiles() files: Express.Multer.File[],
-      @Res() res: express.Response,
+      @UploadedFiles() files: UploadedFile[],
+      @Res() res: Response,
    ) {
+      console.log('Received generate request with payload:', payload);
       try {
+         const modelName = await this.modelConfigService.getActiveModelName();
          const stream = await this.aiService.generate(
-            payload.modelName || 'gemini-flash-latest',
+            modelName,
             {
                text: payload.prompt,
                files: files?.map((file) => ({
@@ -108,11 +137,10 @@ export class AppController {
                continue;
             }
 
-            res.write(`${JSON.stringify({ text: chunk.text })}\n\n`);
+            res.write(`data: ${JSON.stringify({ text: chunk.text })}\n\n`);
          }
 
-         // res.write('event: done\ndata: [DONE]\n\n');
-
+         res.write('event: done\ndata: [DONE]\n\n');
       } catch (error) {
          const message =
             error instanceof Error
@@ -148,14 +176,16 @@ export class AppController {
    )
    async summarize(
       @Body() payload: SummarizeDto,
-      @UploadedFiles() files: Express.Multer.File[],
-      @Res() res: express.Response,
+      @UploadedFiles() files: UploadedFile[],
+      @Res() res: Response,
    ) {
+      console.log('Received summarize request with payload:', payload);
       const { text, creativity } = payload;
 
       try {
+         const modelName = await this.modelConfigService.getActiveModelName();
          const result = await this.aiService.generate(
-            payload.modelName || 'gemini-flash-latest',
+            modelName,
             {
                text: `Summarize the following text:"\n\n${text}`,
                files: files?.map((file) => ({
@@ -184,7 +214,7 @@ export class AppController {
                continue;
             }
 
-            res.write(`${JSON.stringify({ text: chunk.text })}\n\n`);
+            res.write(`data: ${JSON.stringify({ text: chunk.text })}\n\n`);
          }
 
          res.write('event: done\ndata: [DONE]\n\n');

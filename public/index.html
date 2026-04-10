@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+   <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>Rosie - AI Assistant</title>
+      <link rel="stylesheet" href="/styles.css" />
+   </head>
+   <body>
+      <div class="container">
+         <header class="header">
+            <h1>Rosie</h1>
+            <p>AI Assistant</p>
+            <a class="model-link" href="/model-settings.html">Model Settings</a>
+         </header>
+
+         <div class="tabs">
+            <!-- <button class="tab-button active" data-tab="summarize">
+               <span class="tab-icon">📄</span>
+               Summarize
+            </button>
+            <button class="tab-button" data-tab="qa">
+               <span class="tab-icon">❓</span>
+               Ask Question
+            </button> -->
+         </div>
+
+         <!-- Summarize Tab -->
+         <div class="tab-content" id="summarize-tab">
+            <div class="chat-container">
+               <div class="chat-messages" id="summarize-messages"></div>
+            </div>
+            <div class="input-section">
+               <textarea
+                  id="summarize-input"
+                  placeholder="Paste text here or upload a file..."
+                  rows="4"
+               ></textarea>
+               <div class="file-upload-zone" id="summarize-upload">
+                  <input
+                     type="file"
+                     id="summarize-files"
+                     multiple
+                     accept=".pdf,.txt,.md,.png,.jpg,.jpeg"
+                  />
+                  <p>📎 Drag files here or click to upload</p>
+               </div>
+               <button class="send-button" id="summarize-send">
+                  Summarize
+               </button>
+            </div>
+         </div>
+
+         <!-- Q&A Tab -->
+         <div class="tab-content active" id="qa-tab">
+            <div class="chat-container">
+               <div class="chat-messages" id="qa-messages"></div>
+            </div>
+            <div class="input-section">
+               <textarea
+                  id="qa-input"
+                  placeholder="Ask me anything..."
+                  rows="4"
+               ></textarea>
+               <div class="file-upload-zone" id="qa-upload">
+                  <input
+                     type="file"
+                     id="qa-files"
+                     multiple
+                     accept=".pdf,.txt,.md,.png,.jpg,.jpeg"
+                  />
+                  <p>📎 Drag files here or click to upload</p>
+               </div>
+               <button class="send-button" id="qa-send">Ask</button>
+            </div>
+         </div>
+      </div>
+
+      <script src="/app.js"></script>
+   </body>
+</html>

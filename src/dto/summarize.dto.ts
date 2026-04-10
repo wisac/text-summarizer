@@ -1,13 +1,10 @@
 import {
    IsNotEmpty,
    IsNumber,
-   IsNumberString,
    IsOptional,
    IsString,
    Max,
-   MIN,
    Min,
-   MinLength,
 } from 'class-validator';
 
 export class SummarizeDto {
@@ -23,9 +20,5 @@ export class SummarizeDto {
    @IsOptional()
    @Min(0)
    @Max(1)
-   creativity: number;
-
-   @IsString()
-   @IsOptional()
-   modelName?: string;
+   creativity?: number;
 }

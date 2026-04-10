@@ -1,7 +1,7 @@
 import { IsNotEmpty, IsString } from 'class-validator';
 
-export class GenerateDto {
+export class UpdateModelDto {
    @IsString()
    @IsNotEmpty()
-   prompt: string;
+   modelName: string;
 }

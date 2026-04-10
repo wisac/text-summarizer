@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+   <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>Rosie - Model Settings</title>
+      <link rel="stylesheet" href="/styles.css" />
+   </head>
+   <body>
+      <div class="container model-settings-container">
+         <header class="header">
+            <h1>Model Settings</h1>
+            <p>Select active model for generation</p>
+            <a class="model-link" href="/">Back to Chat</a>
+         </header>
+
+         <main class="model-settings-body">
+            <section class="model-card">
+               <p class="model-current-label">Current Active Model</p>
+               <p class="model-current-value" id="active-model">Loading...</p>
+
+               <label class="model-label" for="available-models"
+                  >Available Models</label
+               >
+               <select id="available-models" class="model-select">
+                  <option value="">Loading models...</option>
+               </select>
+
+               <div class="model-actions">
+                  <button id="refresh-models" class="send-button secondary-btn">
+                     Refresh
+                  </button>
+                  <button id="save-model" class="send-button">
+                     Save Model
+                  </button>
+               </div>
+
+               <p id="model-status" class="model-status" aria-live="polite"></p>
+            </section>
+         </main>
+      </div>
+
+      <script src="/model-settings.js"></script>
+   </body>
+</html>
