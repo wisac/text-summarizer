@@ -7,6 +7,7 @@ export interface AppConfig {
    NODE_ENV: NodeEnv;
    PORT: number;
    GEMINI_API_KEY: string;
+   OPENAI_API_KEY: string;
 }
 
 function parsePort(value: string | undefined): number {
@@ -34,5 +35,6 @@ export default registerAs(
       NODE_ENV: parseNodeEnv(process.env.NODE_ENV),
       PORT: parsePort(process.env.PORT),
       GEMINI_API_KEY: process.env.GEMINI_API_KEY?.trim() || '',
+      OPENAI_API_KEY: process.env.OPENAI_API_KEY?.trim() || '',
    }),
 );
