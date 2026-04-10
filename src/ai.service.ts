@@ -1,4 +1,9 @@
-import { ContentListUnion, GoogleGenAI, HarmBlockMethod, HarmBlockThreshold, HarmCategory } from '@google/genai';
+import {
+   ContentListUnion,
+   GoogleGenAI,
+   HarmBlockThreshold,
+   HarmCategory
+} from '@google/genai';
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppConfig } from './config';
@@ -23,7 +28,7 @@ export class AIService {
    constructor(private readonly configService: ConfigService) {
       const appConfig = this.configService.getOrThrow<AppConfig>('app');
 
-      this.ai = new GoogleGenAI({ apiKey: appConfig.OPENAI_API_KEY });
+      this.ai = new GoogleGenAI({ apiKey: appConfig.GEMINI_API_KEY });
    }
 
    async listModels(pageSize?: number, pageToken?: string) {
@@ -65,54 +70,6 @@ export class AIService {
       }
    }
 
-   async generateStream(
-      modelName: string,
-      input: GenerateInput,
-      config?: {
-         temperature?: number;
-         maxOutputTokens?: number;
-         personality?: string;
-      },
-   ) {
-      try {
-         const text = typeof input === 'string' ? input : (input.text ?? '');
-         const files = typeof input === 'string' ? [] : (input.files ?? []);
-
-         const fileParts = files.map(({ file }) => ({
-            inlineData: {
-               mimeType: file.mimetype,
-               data: file.buffer.toString('base64'),
-            },
-         }));
-
-         const contents = [...(text ? [{ text }] : []), ...fileParts];
-
-         if (!contents.length) {
-            throw new UnprocessableEntityException('No content provided');
-         }
-
-         const response = await this.ai.models.generateContentStream({
-            model: modelName,
-            contents,
-            config: {
-               temperature: config?.temperature,
-               maxOutputTokens: config?.maxOutputTokens,
-               systemInstruction: {
-                  text: config?.personality,
-               },
-            },
-         });
-
-         return response;
-      } catch (error) {
-         console.error(
-            `Error generating content with model ${modelName}:`,
-            error,
-         );
-         throw new UnprocessableEntityException('Failed to generate content');
-      }
-   }
-
    async generate(
       modelName: string,
       input: GenerateInput,
@@ -127,68 +84,47 @@ export class AIService {
          const text = typeof input === 'string' ? input : (input.text ?? '');
          const files = typeof input === 'string' ? [] : (input.files ?? []);
 
-          const fileParts = files.map(({ file }) => ({
-             inlineData: {
-                mimeType: file.mimetype,
-                data: file.buffer.toString('base64'),
-             },
-          }));
+         const fileParts = files.map(({ file }) => ({
+            inlineData: {
+               mimeType: file.mimetype,
+               data: file.buffer.toString('base64'),
+            },
+         }));
 
-    const contents: ContentListUnion = [
-       { text: text },
-       ...fileParts,
-       
-    ];
-
-        
-
-         // const contents: ContentListUnion = [...(text ? [{ text }] : []), ...fileParts];
-
+         const contents: ContentListUnion = [{ text: text }, ...fileParts];
          if (!contents.length) {
             throw new UnprocessableEntityException('No content provided');
          }
-
-         const response = await this.ai.models.generateContent({
+         const response = await this.ai.models.generateContentStream({
             model: modelName,
             contents,
             config: {
                temperature: config?.temperature,
                maxOutputTokens: config?.maxOutputTokens,
                systemInstruction: {
-                  text: config?. personality  + '\n\n' + (config?.guardRails ? config.guardRails.join('\n') : ''),
+                  text:
+                     config?.personality +
+                     '\n\n' +
+                     (config?.guardRails ? config.guardRails.join('\n') : ''),
                },
                safetySettings: [
                   {
                      category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
                      threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-                     method: HarmBlockMethod.SEVERITY,
                   },
                   {
                      category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
                      threshold: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
-                     method: HarmBlockMethod.SEVERITY,
-                  },
-                  {
-                     category: HarmCategory.HARM_CATEGORY_IMAGE_SEXUALLY_EXPLICIT,
-                     threshold: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
-                     method: HarmBlockMethod.SEVERITY,
-                  },
-                  {  
-                     category: HarmCategory.HARM_CATEGORY_IMAGE_SEXUALLY_EXPLICIT,  
-                     threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-                     method: HarmBlockMethod.SEVERITY,
                   },
                   {
                      category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
                      threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-                     method: HarmBlockMethod.PROBABILITY,
-                  }
-                  
+                  },
                ],
             },
          });
 
-         return response.text;
+         return response;
       } catch (error) {
          console.error(
             `Error generating content with model ${modelName}:`,

@@ -3,6 +3,7 @@ import {
    Body,
    Controller,
    Get,
+   HttpCode,
    Param,
    Post,
    Query,
@@ -12,21 +13,20 @@ import {
 } from '@nestjs/common';
 
 import { FilesInterceptor } from '@nestjs/platform-express';
+import express from 'express';
+import { AIService } from './ai.service';
 import { AppService } from './app.service';
 import { GenerateDto } from './dto/generate.dto';
 import { SummarizeDto } from './dto/summarize.dto';
-import { AIService } from './ai.service';
-import { Express, Response } from 'express';
 
 const TEN_MB = 10 * 1024 * 1024;
 const ACCEPTED_DOCUMENT_MIME_TYPES = new Set([
    'application/pdf',
-   'application/msword',
-   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-   'application/vnd.oasis.opendocument.text',
-   'application/rtf',
    'text/plain',
    'text/markdown',
+   'image/png',
+   'image/jpeg',
+   'image/jpg',
 ]);
 
 @Controller()
@@ -49,53 +49,84 @@ export class AppController {
       return this.aiService.getModelDetails(modelName);
    }
 
-   // async generateContent(
-   //    @Body() payload: GenerateDto,
-   //    @UploadedFiles() files: Express.Multer.File[],
-   //    @Res() res: Response,
-   // ) {
-   //    res.setHeader('Content-Type', 'text/event-stream');
-   //    res.setHeader('Cache-Control', 'no-cache');
-   //    res.setHeader('Connection', 'keep-alive');
-   //    res.flushHeaders();
+   @Post('/generate')
+      @HttpCode(200)
+   @UseInterceptors(
+      FilesInterceptor('files', 5, {
+         limits: {
+            fileSize: 10 * 1024 * 1024, // 10MB
+            files: 5,
+         },
+         fileFilter: (_, file, cb) => {
+            if (!ACCEPTED_DOCUMENT_MIME_TYPES.has(file.mimetype)) {
+               return cb(
+                  new BadRequestException(
+                     `Unsupported file type: ${file.mimetype}`,
+                  ),
+                  false,
+               );
+            }
+            cb(null, true);
+         },
+      }),
+   )
+   async generateContent(
+      @Body() payload: GenerateDto,
+      @UploadedFiles() files: Express.Multer.File[],
+      @Res() res: express.Response,
+   ) {
+      try {
+         const stream = await this.aiService.generate(
+            payload.modelName || 'gemini-flash-latest',
+            {
+               text: payload.prompt,
+               files: files?.map((file) => ({
+                  file: {
+                     buffer: file.buffer,
+                     mimetype: file.mimetype,
+                     originalname: file.originalname,
+                  },
+               })),
+            },
+            {
+               personality:
+                  'You are Rosie, an AI assistant here to help users answer any question they may have. Always provide clear, accurate, and relevant responses, and use information from the provided files when it improves the answer.',
+               guardRails: [
+                  'Do not answer question that includes profanity, adult, or NSFW material. If the input contains such content, return a warning message and do not generate a normal response. Follow the provided personality and guardrails strictly. If users ask unrelated questions, respond politely that you are built for answering questions only.',
+                  'You were created by Wilson. Always mention that you are built by Wilson if asked about your identity or origin.',
+               ],
+            },
+         );
 
-   //    try {
-   //       const uploadedFiles = files ?? [];
-   //       for (const file of uploadedFiles) {
-   //          if ((file.size ?? 0) > TEN_MB) {
-   //             throw new BadRequestException(
-   //                `File ${file.originalname ?? ''} exceeds max size of 10MB`,
-   //             );
-   //          }
-   //       }
+         res.setHeader('Content-Type', 'text/event-stream');
+         res.setHeader('Cache-Control', 'no-cache');
+         res.setHeader('Connection', 'keep-alive');
+         res.flushHeaders();
 
-   //       const stream = await this.aiService.generateStream(payload.modelName, {
-   //          text: payload.prompt,
-   //          files: uploadedFiles.map((file) => ({ file })),
-   //       });
+         for await (const chunk of stream) {
+            if (!chunk.text) {
+               continue;
+            }
 
-   //       for await (const chunk of stream) {
-   //          if (!chunk.text) {
-   //             continue;
-   //          }
+            res.write(`${JSON.stringify({ text: chunk.text })}\n\n`);
+         }
 
-   //          res.write(`data: ${JSON.stringify({ text: chunk.text })}\n\n`);
-   //       }
+         // res.write('event: done\ndata: [DONE]\n\n');
 
-   //       res.write('event: done\ndata: [DONE]\n\n');
-   //    } catch (error) {
-   //       const message =
-   //          error instanceof Error
-   //             ? error.message
-   //             : 'Failed to generate content';
+      } catch (error) {
+         const message =
+            error instanceof Error
+               ? error.message
+               : 'Failed to generate content';
 
-   //       res.write(`event: error\ndata: ${JSON.stringify({ message })}\n\n`);
-   //    } finally {
-   //       res.end();
-   //    }
-   // }
+         res.write(`event: error\ndata: ${JSON.stringify({ message })}\n\n`);
+      } finally {
+         res.end();
+      }
+   }
 
    @Post('/summarize')
+   @HttpCode(200)
    @UseInterceptors(
       FilesInterceptor('files', 5, {
          limits: {
@@ -118,32 +149,55 @@ export class AppController {
    async summarize(
       @Body() payload: SummarizeDto,
       @UploadedFiles() files: Express.Multer.File[],
+      @Res() res: express.Response,
    ) {
       const { text, creativity } = payload;
 
-      const result = await this.aiService.generate(
-         payload.modelName || 'gemini-2.5-flash',
-         {
-            text: `Summarize the following text:"\n\n${text}`,
-            files: files?.map(file => ({
-               file: {
-                  buffer: file.buffer,
-                  mimetype: file.mimetype,
-                  originalname: file.originalname,
-               },
-            }))
-         },
-         {
-            temperature: creativity, // Lower temperature for more focused summaries
-            personality:
-               'You are Rosie, a helpful assistant that summarizes text concisely. You were built by Wilson to help users quickly understand the main points of any text they provide. Always focus on delivering clear and accurate summaries.',
-            guardRails: guardRails,
-         },
-      );
+      try {
+         const result = await this.aiService.generate(
+            payload.modelName || 'gemini-flash-latest',
+            {
+               text: `Summarize the following text:"\n\n${text}`,
+               files: files?.map((file) => ({
+                  file: {
+                     buffer: file.buffer,
+                     mimetype: file.mimetype,
+                     originalname: file.originalname,
+                  },
+               })),
+            },
+            {
+               temperature: creativity, // Lower temperature for more focused summaries
+               personality:
+                  'You are Rosie, a helpful assistant that summarizes text concisely. You were built by Wilson to help users quickly understand the main points of any text they provide. Always focus on delivering clear and accurate summaries.',
+               guardRails: guardRails,
+            },
+         );
 
-      return {
-         summary: result?.trim(),
-      };
+         res.setHeader('Content-Type', 'text/event-stream');
+         res.setHeader('Cache-Control', 'no-cache');
+         res.setHeader('Connection', 'keep-alive');
+         res.flushHeaders();
+
+         for await (const chunk of result) {
+            if (!chunk.text) {
+               continue;
+            }
+
+            res.write(`${JSON.stringify({ text: chunk.text })}\n\n`);
+         }
+
+         res.write('event: done\ndata: [DONE]\n\n');
+      } catch (error) {
+         const message =
+            error instanceof Error
+               ? error.message
+               : 'Failed to generate content';
+
+         res.write(`event: error\ndata: ${JSON.stringify({ message })}\n\n`);
+      } finally {
+         res.end();
+      }
    }
 }
 
@@ -151,6 +205,5 @@ const guardRails = [
    'When summarizing, focus on the main points and key details. Be concise and clear. Avoid adding any information that is not present in the original text. If the input includes files, extract relevant information from them to include in the summary. Always ensure that the summary is accurate and reflects the content of the original text and files.',
    'Never allow work on profanity, adult, or NSFW content. If the input text contains any such content, respond with a warning message and do not generate a summary.',
    'Never generate summary for political, religious, or sensitive content. If the input text contains such content, respond with a warning message and do not generate a summary.',
-   "Apart from questions related to who yoy are and what you can do,don't answer any questions the user ask you. If the user ask you any question, respond with a friendly message saying your're only built for summarization and can't answer questions.",
-
+   'Apart from questions about who you are and what you can do, do not answer unrelated user questions. If asked, reply politely that you are built for summarization and cannot answer general questions.',
 ];
