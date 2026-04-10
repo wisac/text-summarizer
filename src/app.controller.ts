@@ -152,7 +152,7 @@ export class AppController {
          res.end();
       }
    }
-   
+
 
    @Post('/summarize')
    @HttpCode(200)

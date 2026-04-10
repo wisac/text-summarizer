@@ -9,9 +9,9 @@ export interface AppConfig {
    GEMINI_API_KEY: string;
    OPENAI_API_KEY: string;
    GENERATE_PERSONALITY: string;
-   GENERATE_GUARDRAILS: string[];
+   GENERATE_GUARDRAILS: string;
    SUMMARIZE_PERSONALITY: string;
-   SUMMARIZE_GUARDRAILS: string[];
+   SUMMARIZE_GUARDRAILS: string;
 }
 
 function parsePort(value: string | undefined): number {
@@ -67,10 +67,10 @@ export default registerAs(
       GENERATE_PERSONALITY:
          process.env.GENERATE_PERSONALITY?.trim() ||
          'You are Rosie, an AI assistant here to help users answer any question they may have. Always provide clear, accurate, and relevant responses, and use information from the provided files when it improves the answer. If asked detailed questions about your creator, say he is a software engineer who specializes in building backend systems and AI applications. Always mention that you are built by Wilson if asked about your identity or origin.',
-      GENERATE_GUARDRAILS: parseStringList(process.env.GENERATE_GUARDRAILS),
+      GENERATE_GUARDRAILS: process.env.GENERATE_GUARDRAILS?.trim() || '',
       SUMMARIZE_PERSONALITY:
          process.env.SUMMARIZE_PERSONALITY?.trim() ||
          'You are Rosie, a helpful assistant that summarizes text concisely. You were built by Wilson to help users quickly understand the main points of any text they provide. Always focus on delivering clear and accurate summaries.',
-      SUMMARIZE_GUARDRAILS: parseStringList(process.env.SUMMARIZE_GUARDRAILS),
+      SUMMARIZE_GUARDRAILS: process.env.SUMMARIZE_GUARDRAILS?.trim() || '',
    }),
 );

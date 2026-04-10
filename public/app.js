@@ -6,6 +6,9 @@ const state = {
    isLoading: false,
 };
 
+const PAGE_LOAD_GREETING_PROMPT =
+   'Greet the user with a short friendly welcome and ask how you can help.';
+
 // DOM Elements
 const tabButtons = document.querySelectorAll('.tab-button');
 const tabContents = document.querySelectorAll('.tab-content');
@@ -26,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
    setupFileUpload('summarize');
    setupFileUpload('qa');
    setupSendButtons();
+   sendHiddenGreetingOnLoad();
 });
 
 // Tab Switching
@@ -188,52 +192,12 @@ async function sendMessage(tab) {
          throw new Error('No response stream received from server.');
       }
 
-      // Handle streaming response
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let aiContent = '';
       const aiContentDiv = document.createElement('div');
       aiContentDiv.className = 'message-content';
       aiMsg.innerHTML = '';
       aiMsg.appendChild(aiContentDiv);
 
-      while (true) {
-         const { done, value } = await reader.read();
-
-         if (done) break;
-
-         buffer += decoder.decode(value, { stream: true });
-         const lines = buffer.split('\n\n');
-
-         // Process complete lines
-         for (let i = 0; i < lines.length - 1; i++) {
-            const block = lines[i].trim();
-            if (!block) {
-               continue;
-            }
-
-            const parsedBlock = parseStreamBlock(block);
-            if (!parsedBlock) {
-               continue;
-            }
-
-            if (parsedBlock.type === 'error') {
-               throw new Error(
-                  parsedBlock.message || 'Streaming request failed.',
-               );
-            }
-
-            if (parsedBlock.type === 'text') {
-               aiContent += parsedBlock.text;
-               aiContentDiv.innerHTML = formatAssistantMessage(aiContent);
-               messages.scrollTop = messages.scrollHeight;
-            }
-         }
-
-         // Keep incomplete line in buffer
-         buffer = lines[lines.length - 1];
-      }
+      await streamResponseIntoMessage(response, aiContentDiv, messages);
 
       // Clear input and files
       input.value = '';
@@ -249,6 +213,99 @@ async function sendMessage(tab) {
    } finally {
       state.isLoading = false;
       sendButton.disabled = false;
+   }
+}
+
+async function sendHiddenGreetingOnLoad() {
+   if (state.isLoading || !qaMessages) {
+      return;
+   }
+
+   state.isLoading = true;
+   if (qaSend) qaSend.disabled = true;
+   if (summarizeSend) summarizeSend.disabled = true;
+
+   const aiMsg = document.createElement('div');
+   aiMsg.className = 'message ai';
+   aiMsg.innerHTML = `<div class="message-content"><div class="loading">
+      <div class="loading-dot"></div>
+      <div class="loading-dot"></div>
+      <div class="loading-dot"></div>
+   </div></div>`;
+   qaMessages.appendChild(aiMsg);
+   qaMessages.scrollTop = qaMessages.scrollHeight;
+
+   try {
+      const formData = new FormData();
+      formData.append('prompt', PAGE_LOAD_GREETING_PROMPT);
+
+      const response = await fetch('/generate', {
+         method: 'POST',
+         body: formData,
+      });
+
+      if (!response.ok) {
+         const message = await extractErrorMessageFromResponse(response);
+         throw new Error(message);
+      }
+
+      if (!response.body) {
+         throw new Error('No response stream received from server.');
+      }
+
+      const aiContentDiv = document.createElement('div');
+      aiContentDiv.className = 'message-content';
+      aiMsg.innerHTML = '';
+      aiMsg.appendChild(aiContentDiv);
+
+      await streamResponseIntoMessage(response, aiContentDiv, qaMessages);
+   } catch (error) {
+      console.error('Failed to send hidden greeting prompt:', error);
+      aiMsg.remove();
+   } finally {
+      state.isLoading = false;
+      if (qaSend) qaSend.disabled = false;
+      if (summarizeSend) summarizeSend.disabled = false;
+   }
+}
+
+async function streamResponseIntoMessage(response, aiContentDiv, messages) {
+   const reader = response.body.getReader();
+   const decoder = new TextDecoder();
+   let buffer = '';
+   let aiContent = '';
+
+   while (true) {
+      const { done, value } = await reader.read();
+
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n\n');
+
+      for (let i = 0; i < lines.length - 1; i++) {
+         const block = lines[i].trim();
+         if (!block) {
+            continue;
+         }
+
+         const parsedBlock = parseStreamBlock(block);
+         if (!parsedBlock) {
+            continue;
+         }
+
+         if (parsedBlock.type === 'error') {
+            throw new Error(parsedBlock.message || 'Streaming request failed.');
+         }
+
+         if (parsedBlock.type === 'text') {
+            aiContent += parsedBlock.text;
+            aiContentDiv.innerHTML = formatAssistantMessage(aiContent);
+            messages.scrollTop = messages.scrollHeight;
+         }
+      }
+
+      buffer = lines[lines.length - 1];
    }
 }
 

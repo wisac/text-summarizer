@@ -80,7 +80,7 @@ export class AIService {
          temperature?: number;
          maxOutputTokens?: number;
          personality?: string;
-         guardRails?: string[];
+         guardRails?: string;
       },
    ) {
       try {
@@ -106,12 +106,12 @@ export class AIService {
             config: {
                temperature: config?.temperature,
                maxOutputTokens: config?.maxOutputTokens,
-               // systemInstruction: {
-               //    text:
-               //       config?.personality +
-               //       '\n\n' +
-               //       (config?.guardRails ? config.guardRails.join('\n') : ''),
-               // },
+               systemInstruction: {
+                  text:
+                     config?.personality +
+                     '\n\n' +
+                    config?.guardRails
+               },
                safetySettings: [
                   {
                      category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
