@@ -13,9 +13,11 @@ import {
 } from '@nestjs/common';
 
 import { FilesInterceptor } from '@nestjs/platform-express';
+import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 import { AIService } from './ai.service';
 import { AppService } from './app.service';
+import { AppConfig } from './config';
 import { GenerateDto } from './dto/generate.dto';
 import { SummarizeDto } from './dto/summarize.dto';
 import { UpdateModelDto } from './dto/update-model.dto';
@@ -43,6 +45,7 @@ export class AppController {
       private readonly appService: AppService,
       private readonly aiService: AIService,
       private readonly modelConfigService: ModelConfigService,
+      private readonly configService: ConfigService,
    ) {}
 
    @Get('/model')
@@ -104,6 +107,7 @@ export class AppController {
    ) {
       console.log('Received generate request with payload:', payload);
       try {
+         const appConfig = this.configService.getOrThrow<AppConfig>('app');
          const modelName = await this.modelConfigService.getActiveModelName();
          const stream = await this.aiService.generate(
             modelName,
@@ -118,12 +122,8 @@ export class AppController {
                })),
             },
             {
-               personality:
-                  "You are Rosie, an AI assistant here to help users answer any question they may have. Always provide clear, accurate, and relevant responses, and use information from the provided files when it improves the answer.If asked details questions about your creator, say he's a software engineer who specializes in building Backend systems and AI applications. Always mention that you are built by Wilson if asked about your identity or origin.",
-               guardRails: [
-                  'Do not answer question that includes profanity, adult, or NSFW material. If the input contains such content, return a warning message and do not generate a normal response. Follow the provided personality and guardrails strictly. If users ask unrelated questions, respond politely that you are built for answering questions only.',
-                  'You were created by Wilson. Always mention that you are built by Wilson if asked about your identity or origin.',
-               ],
+               personality: appConfig.GENERATE_PERSONALITY,
+               guardRails: appConfig.GENERATE_GUARDRAILS,
             },
          );
 
@@ -152,6 +152,7 @@ export class AppController {
          res.end();
       }
    }
+   
 
    @Post('/summarize')
    @HttpCode(200)
@@ -183,6 +184,7 @@ export class AppController {
       const { text, creativity } = payload;
 
       try {
+         const appConfig = this.configService.getOrThrow<AppConfig>('app');
          const modelName = await this.modelConfigService.getActiveModelName();
          const result = await this.aiService.generate(
             modelName,
@@ -198,9 +200,8 @@ export class AppController {
             },
             {
                temperature: creativity, // Lower temperature for more focused summaries
-               personality:
-                  'You are Rosie, a helpful assistant that summarizes text concisely. You were built by Wilson to help users quickly understand the main points of any text they provide. Always focus on delivering clear and accurate summaries.',
-               guardRails: guardRails,
+               personality: appConfig.SUMMARIZE_PERSONALITY,
+               guardRails: appConfig.SUMMARIZE_GUARDRAILS,
             },
          );
 
@@ -230,10 +231,3 @@ export class AppController {
       }
    }
 }
-
-const guardRails = [
-   'When summarizing, focus on the main points and key details. Be concise and clear. Avoid adding any information that is not present in the original text. If the input includes files, extract relevant information from them to include in the summary. Always ensure that the summary is accurate and reflects the content of the original text and files.',
-   'Never allow work on profanity, adult, or NSFW content. If the input text contains any such content, respond with a warning message and do not generate a summary.',
-   'Never generate summary for political, religious, or sensitive content. If the input text contains such content, respond with a warning message and do not generate a summary.',
-   'Apart from questions about who you are and what you can do, do not answer unrelated user questions. If asked, reply politely that you are built for summarization and cannot answer general questions.',
-];
