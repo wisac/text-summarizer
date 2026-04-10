@@ -97,11 +97,6 @@ function setupComposerToggles() {
          toggleComposer(tab);
       });
    });
-
-   if (window.matchMedia('(max-width: 768px)').matches) {
-      collapseComposer('summarize', true);
-      collapseComposer('qa', true);
-   }
 }
 
 function toggleComposer(tab) {
