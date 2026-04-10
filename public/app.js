@@ -22,12 +22,14 @@ const qaUpload = document.getElementById('qa-upload');
 const qaFiles = document.getElementById('qa-files');
 const qaSend = document.getElementById('qa-send');
 const qaMessages = document.getElementById('qa-messages');
+const composerToggles = document.querySelectorAll('[data-toggle-composer]');
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
    setupTabSwitching();
    setupFileUpload('summarize');
    setupFileUpload('qa');
+   setupComposerToggles();
    setupSendButtons();
    sendHiddenGreetingOnLoad();
 });
@@ -85,6 +87,54 @@ function setupFileUpload(tab) {
       addFiles(tab, files);
       fileInput.files = new DataTransfer().items; // Reset input
    });
+}
+
+function setupComposerToggles() {
+   composerToggles.forEach((toggle) => {
+      toggle.addEventListener('click', (event) => {
+         event.stopPropagation();
+         const tab = toggle.dataset.toggleComposer;
+         toggleComposer(tab);
+      });
+   });
+
+   if (window.matchMedia('(max-width: 768px)').matches) {
+      collapseComposer('summarize', true);
+      collapseComposer('qa', true);
+   }
+}
+
+function toggleComposer(tab) {
+   const section = document.querySelector(
+      `.input-section[data-composer="${tab}"]`,
+   );
+
+   if (!section) {
+      return;
+   }
+
+   collapseComposer(tab, !section.classList.contains('collapsed'));
+}
+
+function collapseComposer(tab, shouldCollapse) {
+   const section = document.querySelector(
+      `.input-section[data-composer="${tab}"]`,
+   );
+   const toggle = document.querySelector(`[data-toggle-composer="${tab}"]`);
+
+   if (!section || !toggle) {
+      return;
+   }
+
+   section.classList.toggle('collapsed', shouldCollapse);
+   toggle.textContent = shouldCollapse ? 'S' : 'H';
+   toggle.setAttribute('aria-expanded', String(!shouldCollapse));
+   toggle.setAttribute(
+      'aria-label',
+      shouldCollapse
+         ? `Expand ${tab} prompt box`
+         : `Minimize ${tab} prompt box`,
+   );
 }
 
 function addFiles(tab, files) {

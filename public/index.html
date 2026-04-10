@@ -11,7 +11,9 @@
          <header class="header">
             <h1>Rosie</h1>
             <p>AI Assistant</p>
-            <a hidden class="model-link" href="/model-settings.html">Model Settings</a>
+            <a hidden class="model-link" href="/model-settings.html"
+               >Model Settings</a
+            >
          </header>
 
          <div class="tabs">
@@ -30,24 +32,38 @@
             <div class="chat-container">
                <div class="chat-messages" id="summarize-messages"></div>
             </div>
-            <div class="input-section">
-               <textarea
-                  id="summarize-input"
-                  placeholder="Paste text here or upload a file..."
-                  rows="4"
-               ></textarea>
-               <div class="file-upload-zone" id="summarize-upload">
-                  <input
-                     type="file"
-                     id="summarize-files"
-                     multiple
-                     accept=".pdf,.txt,.md,.png,.jpg,.jpeg"
-                  />
-                  <p>📎 Drag files here or click to upload</p>
+            <div class="input-section" data-composer="summarize">
+               <div class="input-toolbar">
+                  <span class="input-toolbar-label">Summarize prompt</span>
+                  <button
+                     class="composer-toggle"
+                     type="button"
+                     data-toggle-composer="summarize"
+                     aria-expanded="true"
+                     aria-label="Minimize summarize prompt box"
+                  >
+                     H
+                  </button>
                </div>
-               <button class="send-button" id="summarize-send">
-                  Summarize
-               </button>
+               <div class="input-body">
+                  <textarea
+                     id="summarize-input"
+                     placeholder="Paste text here or upload a file..."
+                     rows="4"
+                  ></textarea>
+                  <div class="file-upload-zone" id="summarize-upload">
+                     <input
+                        type="file"
+                        id="summarize-files"
+                        multiple
+                        accept=".pdf,.txt,.md,.png,.jpg,.jpeg"
+                     />
+                     <p>📎 Drag files here or click to upload</p>
+                  </div>
+                  <button class="send-button" id="summarize-send">
+                     Summarize
+                  </button>
+               </div>
             </div>
          </div>
 
@@ -56,22 +72,36 @@
             <div class="chat-container">
                <div class="chat-messages" id="qa-messages"></div>
             </div>
-            <div class="input-section">
-               <textarea
-                  id="qa-input"
-                  placeholder="Ask me anything..."
-                  rows="4"
-               ></textarea>
-               <div class="file-upload-zone" id="qa-upload">
-                  <input
-                     type="file"
-                     id="qa-files"
-                     multiple
-                     accept=".pdf,.txt,.md,.png,.jpg,.jpeg"
-                  />
-                  <p>📎 Drag files here or click to upload</p>
+            <div class="input-section" data-composer="qa">
+               <div class="input-toolbar">
+                  <span class="input-toolbar-label">Ask a question</span>
+                  <button
+                     class="composer-toggle"
+                     type="button"
+                     data-toggle-composer="qa"
+                     aria-expanded="true"
+                     aria-label="Minimize question prompt box"
+                  >
+                     H
+                  </button>
                </div>
-               <button class="send-button" id="qa-send">Ask</button>
+               <div class="input-body">
+                  <textarea
+                     id="qa-input"
+                     placeholder="Ask me anything..."
+                     rows="4"
+                  ></textarea>
+                  <div class="file-upload-zone" id="qa-upload">
+                     <input
+                        type="file"
+                        id="qa-files"
+                        multiple
+                        accept=".pdf,.txt,.md,.png,.jpg,.jpeg"
+                     />
+                     <p>📎 Drag files here or click to upload</p>
+                  </div>
+                  <button class="send-button" id="qa-send">Ask</button>
+               </div>
             </div>
          </div>
       </div>
